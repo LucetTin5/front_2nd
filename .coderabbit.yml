@@ -19,9 +19,9 @@ reviews:
       '!packages/assignment-2',
       '!packages/assignment-3',
       '!packages/assignment-4',
-      '!packages/assignment-5/src/origin',
+      '!packages/assignment-5',
       '!packages/**/*.html',
-      '!tsconfig*',
+      '!tsconfig.*',
     ]
   path_instructions: []
   abort_on_close: true
@@ -33,7 +33,7 @@ reviews:
     drafts: false
     base_branches:
       - ^(.*)$
-    start_commit: 24e6e404cae2c1f7aed53c7070ecce895f7a3be7
+    start_commit: 5e3ce1950f5800f28695317b26e1a048b750a3be
   tools:
     shellcheck:
       enabled: true
