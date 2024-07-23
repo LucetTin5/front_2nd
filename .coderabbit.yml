@@ -33,7 +33,7 @@ reviews:
     drafts: false
     base_branches:
       - ^(.*)$
-    start_commit: 5e3ce1950f5800f28695317b26e1a048b750a3be
+    start_commit: c74a0d682cfd0a4f5a443fecc32762a0baeda7a8
   tools:
     shellcheck:
       enabled: true
