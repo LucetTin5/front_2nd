@@ -24,7 +24,7 @@ jobs:
       - name: Job1 (Build)
         id: job1
         run: |
-          pnpm install
+          pnpm -F assignment-6 install
           pnpm -F assignment-6 build
 
       - name: Comment on Error
@@ -51,7 +51,7 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm install
+      - run: pnpm -F assignment-6 install
 
       - name: Run ESLint
         id: job2
@@ -94,7 +94,7 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm install
+      - run: pnpm -F assignment-6 install
 
       - name: Job3 (Test)
         id: job3
@@ -144,16 +144,19 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       - name: install dependencies
-      - run: |
-          pnpm install
+        run: |
+          pnpm -F assignment-6 install
           pnpm install -g @lhci/cli
+
       - name: start dev server
-      - run: |
+        run: |
           pnpm -F assignment-6 start &
           npx -y wait-on http://localhost:5173
+
       - name: Job4 (lighthouse)
         id: job4
         run: lhci autorun
+
       - name: Comment the lighthouse result on PR
         if: success()
         uses: actions/github-script@v6
@@ -195,6 +198,7 @@ jobs:
               repo: context.repo.name,
               body: lighthouseMessage
             })
+
       - name: stop dev server
         if: always()
         run: kill $(lsof -t -i:5173) || true
