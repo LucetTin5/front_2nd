@@ -35,6 +35,7 @@ import { parseSchedule } from './utils.ts';
 import axios from 'axios';
 import { DAY_LABELS } from './constants.ts';
 import { createCachedFetcher } from '../util/fetch.ts';
+import { MajorCheckboxList } from './MajorCheckboxList.tsx';
 
 interface Props {
   searchInfo: {
@@ -172,7 +173,10 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
   const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
   const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
-  const allMajors = [...new Set(lectures.map((lecture) => lecture.major))];
+  const allMajors = useMemo(
+    () => [...new Set(lectures.map((lecture) => lecture.major))],
+    [lectures]
+  );
 
   const changeSearchOption = (
     field: keyof SearchOption,
@@ -396,23 +400,7 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                       </Tag>
                     ))}
                   </Wrap>
-                  <Stack
-                    spacing={2}
-                    overflowY="auto"
-                    h="100px"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    borderRadius={5}
-                    p={2}
-                  >
-                    {allMajors.map((major) => (
-                      <Box key={major}>
-                        <Checkbox key={major} size="sm" value={major}>
-                          {major.replace(/<p>/gi, ' ')}
-                        </Checkbox>
-                      </Box>
-                    ))}
-                  </Stack>
+                  <MajorCheckboxList allMajors={allMajors} />
                 </CheckboxGroup>
               </FormControl>
             </HStack>
