@@ -7,8 +7,8 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import React, { memo, useCallback } from 'react';
-import { CellSize, DAY_LABELS } from './constants.ts';
-import { useScheduleContext } from './ScheduleContext.tsx';
+import { CellSize, DAY_LABELS } from './constants';
+import { useTableContext } from './TableContext';
 
 function createSnapModifier(): Modifier {
   return ({ transform, containerNodeRect, draggingNodeRect }) => {
@@ -48,7 +48,7 @@ const modifiers = [createSnapModifier()];
 
 const ScheduleDndProvider = memo(
   ({ children }: { children: React.ReactNode }) => {
-    const { getSchedules, updateSchedule } = useScheduleContext();
+    const { tableId, schedules, updateSchedule } = useTableContext();
 
     const sensors = useSensors(
       useSensor(PointerSensor, {
@@ -66,10 +66,10 @@ const ScheduleDndProvider = memo(
           return;
         }
 
-        const [tableId, indexStr] = active.id.split(':');
+        const [draggedTableId, indexStr] = active.id.split(':');
         const index = Number(indexStr);
 
-        if (!tableId || isNaN(index)) {
+        if (draggedTableId !== tableId || isNaN(index)) {
           console.error('Invalid active id:', active.id);
           return;
         }
@@ -77,12 +77,6 @@ const ScheduleDndProvider = memo(
         const { x, y } = delta;
         const moveDayIndex = Math.floor(x / CellSize.WIDTH);
         const moveTimeIndex = Math.floor(y / CellSize.HEIGHT);
-
-        const schedules = getSchedules(tableId);
-        if (!schedules.length) {
-          console.error('Schedules not found for table:', tableId);
-          return;
-        }
 
         const updatedSchedules = schedules.map((schedule, scheduleIndex) => {
           if (scheduleIndex !== index) return schedule;
@@ -99,9 +93,9 @@ const ScheduleDndProvider = memo(
           return { ...schedule, day: newDay, range: newRange };
         });
 
-        updateSchedule(tableId, updatedSchedules);
+        updateSchedule(updatedSchedules);
       },
-      [getSchedules, updateSchedule]
+      [tableId, schedules, updateSchedule]
     );
 
     return (

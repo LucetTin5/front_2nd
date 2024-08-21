@@ -1,8 +1,10 @@
-import { useCallback, useState, useMemo, memo, useEffect } from 'react';
+import { useCallback, useState, memo } from 'react';
 import { Button, ButtonGroup, Flex, Heading, Stack } from '@chakra-ui/react';
-import ScheduleTable from './ScheduleTable.tsx';
-import { useScheduleContext } from './ScheduleContext.tsx';
-import SearchDialog from './SearchDialog.tsx';
+import ScheduleTable from './ScheduleTable';
+import { useScheduleContext } from './ScheduleContext';
+import SearchDialog from './SearchDialog';
+import { TableProvider, useTableContext } from './TableContext';
+import ScheduleDndProvider from './ScheduleDndProvider';
 
 interface ScheduleTableWrapperProps {
   tableId: string;
@@ -12,14 +14,10 @@ interface ScheduleTableWrapperProps {
   ) => void;
 }
 
-const ScheduleTableWrapper = memo(
+const ScheduleTableContent = memo(
   ({ tableId, index, setSearchInfo }: ScheduleTableWrapperProps) => {
-    const { getSchedules, updateSchedule, removeTable, addTable } =
-      useScheduleContext();
-    const schedules = useMemo(
-      () => getSchedules(tableId),
-      [getSchedules, tableId]
-    );
+    const { removeTable } = useScheduleContext();
+    const { schedules, updateSchedule } = useTableContext();
 
     const handleScheduleTimeClick = useCallback(
       (timeInfo: { day: string; time: number }) => {
@@ -33,15 +31,10 @@ const ScheduleTableWrapper = memo(
         const updatedSchedules = schedules.filter(
           (schedule) => schedule.day !== day || !schedule.range.includes(time)
         );
-        updateSchedule(tableId, updatedSchedules);
+        updateSchedule(updatedSchedules);
       },
-      [schedules, tableId, updateSchedule]
+      [schedules, updateSchedule]
     );
-
-    const handleDuplicate = useCallback(() => {
-      const newTableId = `schedule-${Date.now()}`;
-      addTable(newTableId, schedules);
-    }, [addTable, schedules]);
 
     return (
       <Stack key={tableId} width="600px">
@@ -55,9 +48,6 @@ const ScheduleTableWrapper = memo(
               onClick={() => setSearchInfo({ tableId })}
             >
               시간표 추가
-            </Button>
-            <Button colorScheme="green" mx="1px" onClick={handleDuplicate}>
-              복제
             </Button>
             <Button colorScheme="green" onClick={() => removeTable(tableId)}>
               삭제
@@ -75,24 +65,34 @@ const ScheduleTableWrapper = memo(
   }
 );
 
+const ScheduleTableWrapper = memo(
+  ({ tableId, index, setSearchInfo }: ScheduleTableWrapperProps) => {
+    return (
+      <TableProvider tableId={tableId}>
+        <ScheduleDndProvider>
+          <ScheduleTableContent
+            tableId={tableId}
+            index={index}
+            setSearchInfo={setSearchInfo}
+          />
+        </ScheduleDndProvider>
+      </TableProvider>
+    );
+  }
+);
+
 export const ScheduleTables = memo(() => {
-  const { getAllTableIds, addTable } = useScheduleContext();
+  const { tableIds, addTable } = useScheduleContext();
   const [searchInfo, setSearchInfo] = useState<{
     tableId: string;
     day?: string;
     time?: number;
   } | null>(null);
-  const [tableIds, setTableIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    setTableIds(getAllTableIds());
-  }, [getAllTableIds]);
 
   const handleAddTable = useCallback(() => {
     const newTableId = `schedule-${Date.now()}`;
-    addTable(newTableId, []);
-    setTableIds(getAllTableIds()); // 새 테이블 추가 후 ID 목록 업데이트
-  }, [addTable, getAllTableIds]);
+    addTable(newTableId);
+  }, [addTable]);
 
   return (
     <>
@@ -107,10 +107,12 @@ export const ScheduleTables = memo(() => {
         ))}
         <Button onClick={handleAddTable}>새 시간표 추가</Button>
       </Flex>
-      <SearchDialog
-        searchInfo={searchInfo}
-        onClose={() => setSearchInfo(null)}
-      />
+      {searchInfo && (
+        <SearchDialog
+          searchInfo={searchInfo}
+          onClose={() => setSearchInfo(null)}
+        />
+      )}
     </>
   );
 });

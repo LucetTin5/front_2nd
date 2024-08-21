@@ -26,7 +26,6 @@ import {
   VStack,
   Wrap,
 } from '@chakra-ui/react';
-import { useScheduleContext } from './ScheduleContext.tsx';
 import { Lecture } from './types.ts';
 import { parseSchedule } from './utils.ts';
 import axios from 'axios';
@@ -34,6 +33,7 @@ import { DAY_LABELS } from './constants.ts';
 import { createCachedFetcher } from '../util/fetch.ts';
 import { MajorCheckboxList } from './MajorCheckboxList.tsx';
 import LectureList from './LectureList.tsx';
+import { useTableContext } from './TableContext.tsx';
 
 interface Props {
   searchInfo: {
@@ -98,7 +98,7 @@ const fetchAllLectures = async () =>
   ]);
 
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
-  const { getSchedules, updateSchedule } = useScheduleContext();
+  const { schedules, updateSchedule } = useTableContext();
 
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [searchOptions, setSearchOptions] = useState<SearchOption>({
@@ -178,20 +178,17 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     (lecture: Lecture) => {
       if (!searchInfo) return;
 
-      const { tableId } = searchInfo;
-      const currentSchedules = getSchedules(tableId);
-
-      const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
+      const newSchedules = parseSchedule(lecture.schedule).map((schedule) => ({
         ...schedule,
         lecture,
       }));
 
-      const updatedSchedules = [...currentSchedules, ...schedules];
-      updateSchedule(tableId, updatedSchedules);
+      const updatedSchedules = [...schedules, ...newSchedules];
+      updateSchedule(updatedSchedules);
 
       onClose();
     },
-    [searchInfo, getSchedules, updateSchedule, onClose]
+    [searchInfo, schedules, updateSchedule, onClose]
   );
 
   useEffect(() => {
