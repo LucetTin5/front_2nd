@@ -98,7 +98,7 @@ const fetchAllLectures = async () =>
   ]);
 
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
-  const { schedulesMap, updateSchedule } = useScheduleContext();
+  const { getSchedules, updateSchedule } = useScheduleContext();
 
   const [lectures, setLectures] = useState<Lecture[]>([]);
   const [searchOptions, setSearchOptions] = useState<SearchOption>({
@@ -169,9 +169,9 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
   const changeSearchOption = useCallback(
     (field: keyof SearchOption, value: SearchOption[typeof field]) => {
-      setSearchOptions({ ...searchOptions, [field]: value });
+      setSearchOptions((prevOptions) => ({ ...prevOptions, [field]: value }));
     },
-    [searchOptions]
+    []
   );
 
   const addSchedule = useCallback(
@@ -179,18 +179,19 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
       if (!searchInfo) return;
 
       const { tableId } = searchInfo;
+      const currentSchedules = getSchedules(tableId);
 
       const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
         ...schedule,
         lecture,
       }));
 
-      const updatedSchedules = [...schedulesMap[tableId], ...schedules];
+      const updatedSchedules = [...currentSchedules, ...schedules];
       updateSchedule(tableId, updatedSchedules);
 
       onClose();
     },
-    [onClose, searchInfo, schedulesMap, updateSchedule]
+    [searchInfo, getSchedules, updateSchedule, onClose]
   );
 
   useEffect(() => {

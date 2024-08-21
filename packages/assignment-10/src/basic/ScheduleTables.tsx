@@ -1,57 +1,49 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useState, useMemo, memo, useEffect } from 'react';
 import { Button, ButtonGroup, Flex, Heading, Stack } from '@chakra-ui/react';
 import ScheduleTable from './ScheduleTable.tsx';
 import { useScheduleContext } from './ScheduleContext.tsx';
 import SearchDialog from './SearchDialog.tsx';
-import { useState } from 'react';
 
-const MemoizedScheduleTable = React.memo(ScheduleTable);
+interface ScheduleTableWrapperProps {
+  tableId: string;
+  index: number;
+  setSearchInfo: (
+    info: { tableId: string; day?: string; time?: number } | null
+  ) => void;
+}
 
-export const ScheduleTables = () => {
-  const { schedulesMap, updateSchedule, addTable, removeTable } =
-    useScheduleContext();
-  const [searchInfo, setSearchInfo] = useState<{
-    tableId: string;
-    day?: string;
-    time?: number;
-  } | null>(null);
+const ScheduleTableWrapper = memo(
+  ({ tableId, index, setSearchInfo }: ScheduleTableWrapperProps) => {
+    const { getSchedules, updateSchedule, removeTable, addTable } =
+      useScheduleContext();
+    const schedules = useMemo(
+      () => getSchedules(tableId),
+      [getSchedules, tableId]
+    );
 
-  const disabledRemoveButton = Object.keys(schedulesMap).length === 1;
+    const handleScheduleTimeClick = useCallback(
+      (timeInfo: { day: string; time: number }) => {
+        setSearchInfo({ tableId, ...timeInfo });
+      },
+      [tableId, setSearchInfo]
+    );
 
-  const handleDuplicate = useCallback(
-    (targetId: string) => {
+    const handleDeleteButtonClick = useCallback(
+      ({ day, time }: { day: string; time: number }) => {
+        const updatedSchedules = schedules.filter(
+          (schedule) => schedule.day !== day || !schedule.range.includes(time)
+        );
+        updateSchedule(tableId, updatedSchedules);
+      },
+      [schedules, tableId, updateSchedule]
+    );
+
+    const handleDuplicate = useCallback(() => {
       const newTableId = `schedule-${Date.now()}`;
-      addTable(newTableId, [...schedulesMap[targetId]]);
-    },
-    [addTable, schedulesMap]
-  );
+      addTable(newTableId, schedules);
+    }, [addTable, schedules]);
 
-  const handleRemove = useCallback(
-    (targetId: string) => {
-      removeTable(targetId);
-    },
-    [removeTable]
-  );
-
-  const handleScheduleTimeClick = useCallback(
-    (tableId: string, timeInfo: { day: string; time: number }) => {
-      setSearchInfo({ tableId, ...timeInfo });
-    },
-    []
-  );
-
-  const handleDeleteButtonClick = useCallback(
-    (tableId: string, { day, time }: { day: string; time: number }) => {
-      const updatedSchedules = schedulesMap[tableId].filter(
-        (schedule) => schedule.day !== day || !schedule.range.includes(time)
-      );
-      updateSchedule(tableId, updatedSchedules);
-    },
-    [schedulesMap, updateSchedule]
-  );
-
-  const renderedTables = useMemo(() => {
-    return Object.entries(schedulesMap).map(([tableId, schedules], index) => (
+    return (
       <Stack key={tableId} width="600px">
         <Flex justifyContent="space-between" alignItems="center">
           <Heading as="h3" fontSize="lg">
@@ -64,47 +56,56 @@ export const ScheduleTables = () => {
             >
               시간표 추가
             </Button>
-            <Button
-              colorScheme="green"
-              mx="1px"
-              onClick={() => handleDuplicate(tableId)}
-            >
+            <Button colorScheme="green" mx="1px" onClick={handleDuplicate}>
               복제
             </Button>
-            <Button
-              colorScheme="green"
-              isDisabled={disabledRemoveButton}
-              onClick={() => handleRemove(tableId)}
-            >
+            <Button colorScheme="green" onClick={() => removeTable(tableId)}>
               삭제
             </Button>
           </ButtonGroup>
         </Flex>
-        <MemoizedScheduleTable
+        <ScheduleTable
           schedules={schedules}
           tableId={tableId}
-          onScheduleTimeClick={(timeInfo) =>
-            handleScheduleTimeClick(tableId, timeInfo)
-          }
-          onDeleteButtonClick={(timeInfo) =>
-            handleDeleteButtonClick(tableId, timeInfo)
-          }
+          onScheduleTimeClick={handleScheduleTimeClick}
+          onDeleteButtonClick={handleDeleteButtonClick}
         />
       </Stack>
-    ));
-  }, [
-    schedulesMap,
-    handleDuplicate,
-    handleRemove,
-    handleScheduleTimeClick,
-    handleDeleteButtonClick,
-    disabledRemoveButton,
-  ]);
+    );
+  }
+);
+
+export const ScheduleTables = memo(() => {
+  const { getAllTableIds, addTable } = useScheduleContext();
+  const [searchInfo, setSearchInfo] = useState<{
+    tableId: string;
+    day?: string;
+    time?: number;
+  } | null>(null);
+  const [tableIds, setTableIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setTableIds(getAllTableIds());
+  }, [getAllTableIds]);
+
+  const handleAddTable = useCallback(() => {
+    const newTableId = `schedule-${Date.now()}`;
+    addTable(newTableId, []);
+    setTableIds(getAllTableIds()); // 새 테이블 추가 후 ID 목록 업데이트
+  }, [addTable, getAllTableIds]);
 
   return (
     <>
       <Flex w="full" gap={6} p={6} flexWrap="wrap">
-        {renderedTables}
+        {tableIds.map((tableId, index) => (
+          <ScheduleTableWrapper
+            key={tableId}
+            tableId={tableId}
+            index={index}
+            setSearchInfo={setSearchInfo}
+          />
+        ))}
+        <Button onClick={handleAddTable}>새 시간표 추가</Button>
       </Flex>
       <SearchDialog
         searchInfo={searchInfo}
@@ -112,4 +113,6 @@ export const ScheduleTables = () => {
       />
     </>
   );
-};
+});
+
+export default ScheduleTables;

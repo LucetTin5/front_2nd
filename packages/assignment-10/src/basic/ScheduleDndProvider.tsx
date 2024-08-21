@@ -6,7 +6,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { PropsWithChildren, useCallback } from 'react';
+import React, { memo, useCallback } from 'react';
 import { CellSize, DAY_LABELS } from './constants.ts';
 import { useScheduleContext } from './ScheduleContext.tsx';
 
@@ -46,69 +46,74 @@ function createSnapModifier(): Modifier {
 
 const modifiers = [createSnapModifier()];
 
-export default function ScheduleDndProvider({ children }: PropsWithChildren) {
-  const { schedulesMap, updateSchedule } = useScheduleContext();
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
+const ScheduleDndProvider = memo(
+  ({ children }: { children: React.ReactNode }) => {
+    const { getSchedules, updateSchedule } = useScheduleContext();
+
+    const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: {
+          distance: 8,
+        },
+      })
+    );
+
+    const handleDragEnd = useCallback(
+      (event: DragEndEvent) => {
+        const { active, delta } = event;
+        if (!active || !active.id || typeof active.id !== 'string') {
+          console.error('Invalid drag event:', event);
+          return;
+        }
+
+        const [tableId, indexStr] = active.id.split(':');
+        const index = Number(indexStr);
+
+        if (!tableId || isNaN(index)) {
+          console.error('Invalid active id:', active.id);
+          return;
+        }
+
+        const { x, y } = delta;
+        const moveDayIndex = Math.floor(x / CellSize.WIDTH);
+        const moveTimeIndex = Math.floor(y / CellSize.HEIGHT);
+
+        const schedules = getSchedules(tableId);
+        if (!schedules.length) {
+          console.error('Schedules not found for table:', tableId);
+          return;
+        }
+
+        const updatedSchedules = schedules.map((schedule, scheduleIndex) => {
+          if (scheduleIndex !== index) return schedule;
+
+          const currentDayIndex = DAY_LABELS.indexOf(
+            schedule.day as (typeof DAY_LABELS)[number]
+          );
+          const newDayIndex =
+            (currentDayIndex + moveDayIndex + DAY_LABELS.length) %
+            DAY_LABELS.length;
+          const newDay = DAY_LABELS[newDayIndex];
+          const newRange = schedule.range.map((time) => time + moveTimeIndex);
+
+          return { ...schedule, day: newDay, range: newRange };
+        });
+
+        updateSchedule(tableId, updatedSchedules);
       },
-    })
-  );
+      [getSchedules, updateSchedule]
+    );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, delta } = event;
-      if (!active || !active.id || typeof active.id !== 'string') {
-        console.error('Invalid drag event:', event);
-        return;
-      }
+    return (
+      <DndContext
+        sensors={sensors}
+        onDragEnd={handleDragEnd}
+        modifiers={modifiers}
+      >
+        {children}
+      </DndContext>
+    );
+  }
+);
 
-      const [tableId, indexStr] = active.id.split(':');
-      const index = Number(indexStr);
-
-      if (!tableId || isNaN(index)) {
-        console.error('Invalid active id:', active.id);
-        return;
-      }
-
-      const { x, y } = delta;
-      const moveDayIndex = Math.floor(x / CellSize.WIDTH);
-      const moveTimeIndex = Math.floor(y / CellSize.HEIGHT);
-
-      const schedules = schedulesMap[tableId];
-      if (!schedules) {
-        console.error('Schedules not found for table:', tableId);
-        return;
-      }
-
-      const updatedSchedules = schedules.map((schedule, scheduleIndex) => {
-        if (scheduleIndex !== index) return schedule;
-
-        const currentDayIndex = DAY_LABELS.indexOf(
-          schedule.day as (typeof DAY_LABELS)[number]
-        );
-        const newDayIndex =
-          (currentDayIndex + moveDayIndex + DAY_LABELS.length) %
-          DAY_LABELS.length;
-        const newDay = DAY_LABELS[newDayIndex];
-        const newRange = schedule.range.map((time) => time + moveTimeIndex);
-
-        return { ...schedule, day: newDay, range: newRange };
-      });
-
-      updateSchedule(tableId, updatedSchedules);
-    },
-    [schedulesMap, updateSchedule]
-  );
-
-  return (
-    <DndContext
-      sensors={sensors}
-      onDragEnd={handleDragEnd}
-      modifiers={modifiers}
-    >
-      {children}
-    </DndContext>
-  );
-}
+export default ScheduleDndProvider;
