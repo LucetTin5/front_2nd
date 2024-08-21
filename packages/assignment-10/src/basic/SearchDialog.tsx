@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Checkbox,
@@ -80,8 +80,6 @@ const TIME_SLOTS = [
   { id: 24, label: '22:35~23:25' },
 ];
 
-// const PAGE_SIZE = 100;
-
 const fetchMajors = createCachedFetcher(() =>
   axios.get<Lecture[]>('/schedules-majors.json')
 );
@@ -89,7 +87,6 @@ const fetchLiberalArts = createCachedFetcher(() =>
   axios.get<Lecture[]>('/schedules-liberal-arts.json')
 );
 
-// TODO: 이 코드를 개선해서 API 호출을 최소화 해보세요 + Promise.all이 현재 잘못 사용되고 있습니다. 같이 개선해주세요.
 const fetchAllLectures = async () =>
   await Promise.all([
     (console.log('API Call 1', performance.now()), fetchMajors()),
@@ -100,7 +97,6 @@ const fetchAllLectures = async () =>
     (console.log('API Call 6', performance.now()), fetchLiberalArts()),
   ]);
 
-// TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const { setSchedulesMap } = useScheduleContext();
 
@@ -171,30 +167,33 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     [lectures]
   );
 
-  const changeSearchOption = (
-    field: keyof SearchOption,
-    value: SearchOption[typeof field]
-  ) => {
-    setSearchOptions({ ...searchOptions, [field]: value });
-  };
+  const changeSearchOption = useCallback(
+    (field: keyof SearchOption, value: SearchOption[typeof field]) => {
+      setSearchOptions({ ...searchOptions, [field]: value });
+    },
+    [searchOptions]
+  );
 
-  const addSchedule = (lecture: Lecture) => {
-    if (!searchInfo) return;
+  const addSchedule = useCallback(
+    (lecture: Lecture) => {
+      if (!searchInfo) return;
 
-    const { tableId } = searchInfo;
+      const { tableId } = searchInfo;
 
-    const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
-      ...schedule,
-      lecture,
-    }));
+      const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
+        ...schedule,
+        lecture,
+      }));
 
-    setSchedulesMap((prev) => ({
-      ...prev,
-      [tableId]: [...prev[tableId], ...schedules],
-    }));
+      setSchedulesMap((prev) => ({
+        ...prev,
+        [tableId]: [...prev[tableId], ...schedules],
+      }));
 
-    onClose();
-  };
+      onClose();
+    },
+    [onClose, searchInfo, setSchedulesMap]
+  );
 
   useEffect(() => {
     const start = performance.now();
